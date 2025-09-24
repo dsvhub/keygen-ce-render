@@ -2,7 +2,9 @@ services:
   init:
     build:
       context: .
-      dockerfile_inline: |
+      build:
+  context: .
+  dockerfile: Dockerfile|
         FROM alpine
         RUN apk add --no-cache openssl bash uuidgen        
         COPY ./keygen-init /usr/local/bin
@@ -19,8 +21,7 @@ services:
     environment:
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/keygen"
       DISABLE_DATABASE_ENVIRONMENT_CHECK: 1
-    env_file:
-      - path: .env
+    env_file: .env
       - path: keys.env
         required: false
     command: setup
@@ -51,8 +52,7 @@ services:
     ports:
       - "3000:3000"
     command: "web"
-    env_file:
-      - path: .env
+    env_file: .env
       - path: keys.env
         required: false
       - path: account.env
@@ -76,8 +76,7 @@ services:
       REDIS_URL: "redis://redis:6379"
       KEYGEN_ADMIN_USER: ${KEYGEN_ADMIN_USER}
       KEYGEN_ADMIN_PASS: ${KEYGEN_ADMIN_PASS}
-    env_file:
-      - path: .env
+    env_file: .env
       - path: keys.env
         required: false
     volumes:
