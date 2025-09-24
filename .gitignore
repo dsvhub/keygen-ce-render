@@ -1,3 +1,16 @@
+# Ignore secrets
 .env
-*.log
-.DS_Store
+*.key
+
+# Ignore build artifacts
+/log/*
+/tmp/*
+/node_modules
+/public/assets
+/storage
+.byebug_history
+
+# Ignore Ruby stuff
+*.rbc
+.bundle
+vendor/bundle
