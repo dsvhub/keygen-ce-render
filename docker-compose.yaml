@@ -1,104 +1,52 @@
+version: '3.8'
+
 services:
-  init:
-    build:
-      context: .
-      build:
-  context: .
-  dockerfile: Dockerfile|
-        FROM alpine
-        RUN apk add --no-cache openssl bash uuidgen        
-        COPY ./keygen-init /usr/local/bin
-        RUN dos2unix /usr/local/bin/keygen-init
-        RUN chmod +x /usr/local/bin/keygen-init
-    entrypoint: keygen-init
-    volumes:
-      - source: ./
-        target: /var/keygen
-        type: bind
-
-  setup:
-    image: keygen/api:latest
-    environment:
-      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/keygen"
-      DISABLE_DATABASE_ENVIRONMENT_CHECK: 1
-    env_file: .env
-      - path: keys.env
-        required: false
-    command: setup
-    depends_on: [ postgres ]
-    tty: true
-    stdin_open: true
-
-  postgres:
-    image: postgres:9.6
-    ports:
-      - "5432:5432"
+  db:
+    image: postgres:15
+    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: keygen
-    volumes:
-      - postgres:/var/lib/postgresql/data
-
-  redis:
-    image: redis
+      POSTGRES_DB: keygen_ce
     ports:
-      - "6379:6379"
+      - "5432:5432"
     volumes:
-      - redis:/data
+      - db_data:/var/lib/postgresql/data
 
   web:
-    image: keygen/api:latest
-    ports:
-      - "3000:3000"
-    command: "web"
+    build:
+      context: .
+      dockerfile: Dockerfile
     env_file: .env
-      - path: keys.env
-        required: false
-      - path: account.env
-        required: false
-    environment:
-      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/keygen"
-      REDIS_URL: "redis://redis:6379"
-      KEYGEN_ADMIN_USER: ${KEYGEN_ADMIN_USER}
-      KEYGEN_ADMIN_PASS: ${KEYGEN_ADMIN_PASS}
-    volumes:
-      - keygen:/etc/keygen
-    links:
-      - postgres
-      - redis
+    ports:
+      - "10000:10000"
+    depends_on:
+      - db
 
   worker:
-    image: keygen/api:latest
-    command: "worker"
-    environment:
-      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/keygen"
-      REDIS_URL: "redis://redis:6379"
-      KEYGEN_ADMIN_USER: ${KEYGEN_ADMIN_USER}
-      KEYGEN_ADMIN_PASS: ${KEYGEN_ADMIN_PASS}
+    build:
+      context: .
+      dockerfile: Dockerfile
     env_file: .env
-      - path: keys.env
-        required: false
-    volumes:
-      - keygen:/etc/keygen
-    links:
-      - postgres
-      - redis
-  
-  caddy:
-    image: caddy:latest
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
+    depends_on:
+      - db
+
+  setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    depends_on:
+      - db
+
+  init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    depends_on:
+      - db
+    command: ["./keygen-init"]
+
 volumes:
-  keygen:
-  postgres:
-  redis:
-  caddy_data:
-  caddy_config:
+  db_data:
